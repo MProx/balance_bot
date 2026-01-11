@@ -4,22 +4,24 @@
 
 #include "Config.h"
 
-#include "FastAccelStepper.h"
+#include "AccelStepper.h"
 
 class Motors
 {
 public:
-    Motors() : engine_() {}
+    Motors() : stepper1_(AccelStepper::DRIVER, MOTOR_1_STEP_PIN, MOTOR_1_DIR_PIN),
+               stepper2_(AccelStepper::DRIVER, MOTOR_2_STEP_PIN, MOTOR_2_DIR_PIN) {};
     void begin();
     void stop();
-    void set_speed(int32_t speed);
+    void set_speed(int32_t pulse_speed_hz, int32_t yaw_diff);
     void enable();
     void disable();
+    void run();
 
 private:
-    FastAccelStepperEngine engine_;
-    FastAccelStepper *stepper1_;
-    FastAccelStepper *stepper2_;
+    AccelStepper stepper1_;
+    AccelStepper stepper2_;
 
     bool enabled_;
+    bool initialised_ = false;
 };

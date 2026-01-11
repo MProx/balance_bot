@@ -16,16 +16,9 @@ public:
     Bluetooth() : service_(SERVICE_UUID),
                   characteristic_(CHARACTERISTIC_UUID, BLERead | BLEWrite, MAX_VAL) {};
 
-    void handle_message(const uint8_t *msg, uint16_t msg_len)
-    {
-        if (msg_handler_cb_)
-        {
-            msg_handler_cb_(msg, msg_len);
-        }
-    }
-
     bool begin(Callback msg_handler_cb);
     void update();
+    void handle_message(const uint8_t *msg, uint16_t msg_len);
 
 private:
     Callback msg_handler_cb_;

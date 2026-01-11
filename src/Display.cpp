@@ -10,51 +10,61 @@ void Display::begin()
 
 volatile void Display::update()
 {
-    // Serial.printf("%0.2f,%0.2f,-90,90\n", status_->pitch_rad * RAD_TO_DEG, status_->pitch_rad_acc * RAD_TO_DEG);
+    // Serial.printf("%0.2f,%0.2f,-90,90\n", status_->pitch_rad, status_->pitch_rad_acc);
+
+    const int buff = 3;
+    // w and h switched because in landscape mode
+    const int sprite_w = TFT_HEIGHT - 2 * buff;
+    const int sprite_h = TFT_WIDTH - 2 * buff;
 
     TFT_eSprite sprite(&disp_);
-    sprite.createSprite(200, 125);
+    sprite.createSprite(sprite_w, sprite_h);
     sprite.fillSprite(TFT_BLACK);
     sprite.setTextColor(TFT_WHITE);
     sprite.setTextFont(2);
     sprite.setTextSize(1);
 
+    // print pitch angle
     sprite.setCursor(15, 5);
-    sprite.printf("%0.1f deg", status_->pitch_rad * RAD_TO_DEG);
-    sprite.setCursor(110, 5);
-    sprite.printf("%0.1f mm/s", status_->speed);
+    sprite.printf("%0.1f deg", status_->pitch_rad);
 
-    float battery_pct = (constrain(status_->v_in_volts, 9.0, 12.10) - 9) * 100 / (12.0 - 9.0);
+    // Print position
     sprite.setCursor(15, 20);
-    sprite.printf("%0.1f V (%0.0f %%)", status_->v_in_volts, battery_pct);
+    sprite.printf("%0.1f mm", status_->position);
+
+    // Print battery voltage
+    sprite.setCursor(110, 5);
+    sprite.printf("%0.1f V", status_->batt_volts);
+
+    // Draw box indicating speed:
+    const int max_abs_speed = 300;
+    const int box_w = 20;
+    const int rbuff = 5; // Gap between box and right edge of sprite
+    int box_h = abs(status_->speed) / max_abs_speed * sprite_h / 2;
+    int box_y = status_->speed < 0 ? sprite_h / 2 : sprite_h / 2 - box_h;
+    sprite.drawRect(sprite_w - box_w - rbuff, 0, box_w, sprite_h, TFT_DARKGREY);
+    sprite.fillRect(sprite_w - box_w - rbuff, box_y, box_w, box_h, TFT_DARKGREY);
+    sprite.drawLine(sprite_w - box_w - rbuff, sprite_h / 2, sprite_w - rbuff, sprite_h / 2, TFT_WHITE);
 
     sprite.setCursor(15, 42);
-    sprite.print("Pitch");
+    sprite.print("Pitch:");
     sprite.drawLine(15, 57, 47, 57, TFT_WHITE);
     sprite.setCursor(15, 60);
-    sprite.printf("P: %0.1f", status_->pitch_P);
+    sprite.printf("P: %0.1f", status_->pitch_kP);
     sprite.setCursor(15, 75);
-    sprite.printf("I: %0.1f", status_->pitch_I);
+    sprite.printf("I: %0.1f", status_->pitch_kI);
     sprite.setCursor(15, 90);
-    sprite.printf("D: %0.1f", status_->pitch_D);
+    sprite.printf("D: %0.1f", status_->pitch_kD);
 
     sprite.setCursor(110, 42);
-    sprite.print("Pos");
+    sprite.print("Position:");
     sprite.drawLine(110, 57, 155, 57, TFT_WHITE);
     sprite.setCursor(110, 60);
-    sprite.printf("P: %0.5f", status_->speed_P);
+    sprite.printf("P: %0.5f", status_->position_kP);
     sprite.setCursor(110, 75);
-    sprite.printf("I: %0.5f", status_->speed_I);
+    sprite.printf("I: %0.5f", status_->position_kI);
     sprite.setCursor(110, 90);
-    sprite.printf("D: %0.5f", status_->speed_D);
+    sprite.printf("D: %0.5f", status_->position_kD);
 
-    if (status_->loop_freq_warning)
-    {
-        Serial.println("LOOP FREQUENCY WARNING");
-        sprite.setCursor(15, 105);
-        sprite.setTextColor(TFT_RED);
-        sprite.printf("LOOP FREQ WARNING");
-        sprite.setTextColor(TFT_WHITE);
-    }
-    sprite.pushSprite(3, 3);
+    sprite.pushSprite(buff, buff);
 }

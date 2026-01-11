@@ -2,44 +2,36 @@
 
 void Motors::begin()
 {
-    engine_.init();
-    stepper1_ = engine_.stepperConnectToPin(MOTOR_1_STEP_PIN);
-    stepper2_ = engine_.stepperConnectToPin(MOTOR_2_STEP_PIN);
-    if (!stepper1_ || !stepper2_)
-    {
-        Serial.println("Failed to configure stepper(s)!");
-        while (1)
-            ;
-    }
-    stepper1_->setDirectionPin(MOTOR_1_DIR_PIN);
-    stepper2_->setDirectionPin(MOTOR_2_DIR_PIN);
-    stepper1_->setAcceleration(1000000); // Set high for responsive PID
-    stepper2_->setAcceleration(1000000); // Set high for responsive PID
+    stepper1_.setMaxSpeed(100000);
+    stepper2_.setMaxSpeed(100000);
+
+    // Invert one direction pin, so that both wheels spin the same way
+    stepper1_.setPinsInverted(true, false, false);
 
     pinMode(MOTOR_EN_PIN, OUTPUT);
-    disable();
+
+    stop();
+    initialised_ = true;
 }
 
 void Motors::stop()
 {
-    stepper1_->stopMove();
-    stepper2_->stopMove();
+    stepper1_.setSpeed(0);
+    stepper2_.setSpeed(0);
 }
 
-void Motors::set_speed(int32_t pulse_speed_hz)
+void Motors::set_speed(int32_t pulse_speed_hz, int32_t yaw_diff)
 {
-    stepper1_->setSpeedInHz(abs(pulse_speed_hz));
-    stepper2_->setSpeedInHz(abs(pulse_speed_hz));
-    if (pulse_speed_hz > 0)
-    {
-        stepper1_->runBackward();
-        stepper2_->runForward();
-    }
-    else if (pulse_speed_hz < 0)
-    {
-        stepper1_->runForward();
-        stepper2_->runBackward();
-    }
+    stepper1_.setSpeed(pulse_speed_hz + yaw_diff);
+    stepper2_.setSpeed(pulse_speed_hz - yaw_diff);
+}
+
+void Motors::run()
+{
+    if (!initialised_)
+        return;
+    stepper1_.runSpeed();
+    stepper2_.runSpeed();
 }
 
 void Motors::enable()

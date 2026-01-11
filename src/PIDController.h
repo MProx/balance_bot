@@ -7,9 +7,10 @@ class PIDController
 public:
     PIDController(float &kP, float &kI, float &kD) : kP_(kP), kI_(kI), kD_(kD) {};
 
-    float calculate(float input);
+    float calculate(float input, float input_rate);
     void set_setpoint(float setpoint);
     void constrain_I_term(float max_i_term);
+    void reset_I_term();
 
 private:
     float &kP_;

@@ -3,7 +3,7 @@
 
 bool Bluetooth::begin(Callback msg_handler_cb)
 {
-    // COnfigure bluetooth:
+    // Configure bluetooth:
     if (!BLE.begin())
         return false;
     BLE.setLocalName("ESP32_BLE");
@@ -13,7 +13,7 @@ bool Bluetooth::begin(Callback msg_handler_cb)
     characteristic_.writeValue(0);
     BLE.advertise();
 
-    // Set callback function to be called when message is received:
+    // Set callback function to be invoked when message is received:
     msg_handler_cb_ = msg_handler_cb;
 
     return true;
@@ -32,5 +32,13 @@ void Bluetooth::update()
                 handle_message(characteristic_.value(), characteristic_.valueLength());
         }
         Serial.println("Device disconnected");
+    }
+}
+
+void Bluetooth::handle_message(const uint8_t *msg, uint16_t msg_len)
+{
+    if (msg_handler_cb_)
+    {
+        msg_handler_cb_(msg, msg_len);
     }
 }

@@ -2,7 +2,7 @@
 
 #include "PIDController.h"
 
-float PIDController::calculate(float input)
+float PIDController::calculate(float input, float input_rate)
 {
     uint32_t _now = micros();
 
@@ -20,7 +20,7 @@ float PIDController::calculate(float input)
     // Eliminate setpoint from dError to avoid lurches when setpoint changes:
     // _dError = (_error - last_error)
     //         = (setpoint_ - input) - (setpoint_ - last_input_ )
-    float _dError = last_input_ - input;
+    // float _dError = last_input_ - input;
 
     // Save key values for calculus on next iteration:
     last_micros_ = _now;
@@ -36,8 +36,7 @@ float PIDController::calculate(float input)
         I_ = constrain(I_, -I_max_, I_max_);
 
     // Differential:
-    D_ = kD_ * _dError / _dTime;
-
+    D_ = kD_ * (-input_rate);
     // ----------
 
     // Debug (SLOWS DOWN LOOP):
@@ -55,4 +54,9 @@ void PIDController::set_setpoint(float setpoint)
 void PIDController::constrain_I_term(float max_i_term)
 {
     I_max_ = max_i_term;
+}
+
+void PIDController::reset_I_term()
+{
+    I_ = 0;
 }
