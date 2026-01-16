@@ -25,25 +25,8 @@ void bt_message_handler(const uint8_t *, uint16_t);
 void core0code(void *parameter);
 float hz_to_speed(int16_t stepper_hz);
 float get_batt_volts();
-
-void set_imu_data_ready()
-{
-  status.imu_data_ready = true;
-}
-
-void imu_update()
-{
-  // Measure IMU data as rapidly as possible best for smoothing:
-  if (status.imu_data_ready)
-  {
-    imu.update();
-    status.pitch_rad = imu.pitch_rad;
-    status.pitch_rad_acc = imu.pitch_rad_acc;                                                                 // For P and I terms of pitch PID
-    status.pitch_rate_rad_per_sec = status.pitch_rate_rad_per_sec * 0.99 + imu.pitch_rad_per_sec_gyro * 0.01; // For D term of pitch PID
-    status.yaw_rate_rad_per_sec = status.yaw_rate_rad_per_sec * 0.9 + imu.yaw_rad_per_sec_gyro * 0.1;         // For yaw rate of pitch PID
-    status.imu_data_ready = false;                                                                            // clear flag
-  }
-}
+void set_imu_data_ready();
+void imu_update();
 
 void setup()
 {
@@ -55,7 +38,8 @@ void setup()
   // Configure peripheral devices:
   Wire.begin(IMU_SDA_PIN, IMU_SCL_PIN, IMU_I2C_CLOCK_FREQUENCY);
   imu.begin();
-  attachInterrupt(digitalPinToInterrupt(IMU_IRQ_PIN), set_imu_data_ready, RISING);
+  attachInterrupt(digitalPinToInterrupt(IMU_IRQ_PIN), []()
+                  { status.imu_data_ready = true; }, RISING);
   motors.begin();
   motors.disable();
 
@@ -71,8 +55,8 @@ void setup()
 
   // Prevent integral windup. I term should only be needed for removing offset
   // that P term cannot take care of, so need not be big.
-  // position_pid.constrain_I_term(3.0); // degrees
-  // pitch_pid.constrain_I_term(5000);
+  position_pid.constrain_I_term(4.0);
+  pitch_pid.constrain_I_term(20000);
 }
 
 void loop()
@@ -80,21 +64,24 @@ void loop()
   uint32_t now = micros();
 
   // Bootstrap from previous loops:
-  static uint32_t prev_now = now;
   static uint32_t prev_pitch_pid_time = now;
   static uint32_t prev_pos_pid_time = now;
-  if (prev_now == now)
-    return; // Don't run on first loop
-
-  imu_update();
 
   // Run pitch PID loop rapidly:
   if (now - prev_pitch_pid_time > PITCH_PID_LOOP_PERIOD)
   {
+    // Retrieve IMU readings:
+    if (status.imu_data_ready)
+    {
+      imu.update();
+      status.pitch_rad = imu.pitch_rad;
+      status.pitch_rate_rad_per_sec = imu.pitch_rad_per_sec_gyro;
+      status.yaw_rate_rad_per_sec = imu.yaw_rad_per_sec_gyro;
+      status.imu_data_ready = false;
+    }
 
     // Avoid lurch at startup and only move if in active range
-    const float limit = 35.0f; // degrees
-    if ((micros() < 1E6) || (abs(imu.pitch_rad) > limit))
+    if ((micros() < STARTUP_DELAY_US) || (abs(imu.pitch_rad) > PITCH_LIMIT || (!digitalRead(BTN_R_PIN))))
     {
       motors.disable();
       status.position = 0.0;
@@ -106,7 +93,7 @@ void loop()
     else
     {
       // Calculate requried stepper pulse frequency to achieve desired pitch angle
-      pitch_pid.set_setpoint(constrain(status.pitch_rad_setpoint, -3, 3));
+      pitch_pid.set_setpoint(status.pitch_rad_setpoint);
       float raw = pitch_pid.calculate(status.pitch_rad, status.pitch_rate_rad_per_sec);
       status.pitch_output = status.pitch_output * 0.95 + raw * 0.05;
 
@@ -117,7 +104,7 @@ void loop()
       motors.set_speed(-status.pitch_output, status.yaw_offset);
 
       // Update position:
-      float dT = float(now - prev_now) / 1e6;
+      float dT = float(now - prev_pitch_pid_time) / 1e6;
       status.speed = hz_to_speed(-status.pitch_output);
       status.position += status.speed * dT;
     }
@@ -127,19 +114,21 @@ void loop()
 
   if (now - prev_pos_pid_time > POSITION_PID_LOOP_PERIOD)
   {
-    prev_pos_pid_time = now;
     // Calculate requried pitch angle to achieve desired linear position
     // Note: position setpoint comes from BT commands for remote control
     position_pid.set_setpoint(status.position_setpoint);
-    status.pitch_rad_setpoint = position_pid.calculate(status.position, status.speed);
+    static float speed_s = 0;
+    speed_s = status.speed * 0.7 + speed_s * 0.7;
+    status.pitch_rad_setpoint = position_pid.calculate(status.position, speed_s);
+    // status.pitch_rad_setpoint = position_pid.calculate(status.position, status.speed);
 
     // Calculate required motor differential pulse rate for yaw offset:
     // Note: yaw rate setpoint comes from BT commands for remote control
     yaw_pid.set_setpoint(status.yaw_rate_setpoint);
-    status.yaw_offset = yaw_pid.calculate(status.yaw_rate_rad_per_sec, 0.0);
-  }
+    status.yaw_offset = yaw_pid.calculate(status.yaw_rate_rad_per_sec);
 
-  prev_now = now;
+    prev_pos_pid_time = now;
+  }
 }
 
 // Function to run on Core0
@@ -152,28 +141,11 @@ void core0code(void *parameter)
     {
       bluetooth.update(); // Blocks with active BT connection!
       status.check_bt = true;
+      // status.yaw_rate_setpoint = 20;
     }
     motors.run();
-    delayMicroseconds(1); // feed watchdog
+    delayMicroseconds(0); // feed watchdog
   }
-
-  // display.begin();
-
-  // while (true)
-  // {
-  //   if (!digitalRead(BTN_L_PIN))
-  //   {
-  //     status.position = 0;
-  //     status.position_setpoint = 0;
-  //     status.pitch_rad_setpoint = 0;
-  //     position_pid.reset_I_term();
-  //     pitch_pid.reset_I_term();
-  //   }
-  //   status.batt_volts = get_batt_volts();
-  //   bluetooth.update();
-  //   display.update();
-  //   delay(1); // Feed watchdog
-  // }
 }
 
 // Callback function invoked when bluetooth message is received:
@@ -214,17 +186,17 @@ void bt_message_handler(const uint8_t *msg, uint16_t len_msg)
 
   case 'p':
     status.position_kP = msg_value / 1000.0;
-    Serial.printf("Pos P set to %f\n", msg_value);
+    Serial.printf("Pos P set to %f\n", msg_value / 1000.0);
     break;
 
   case 'i':
     status.position_kI = msg_value / 1000.0;
-    Serial.printf("Pos I set to %f\n", msg_value);
+    Serial.printf("Pos I set to %f\n", msg_value / 1000.0);
     break;
 
   case 'd':
     status.position_kD = msg_value / 1000.0;
-    Serial.printf("Pos D set to %f\n", msg_value);
+    Serial.printf("Pos D set to %f\n", msg_value / 1000.0);
     break;
 
     // case 'x':

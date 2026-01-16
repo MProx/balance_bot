@@ -51,12 +51,14 @@ void IMU::update()
     // Compute angle from accelerometer in degrees:
     pitch_rad_acc = atan2(-ax_, az_) * RAD_TO_DEG;
 
-    // Compute anglular rate in deg / sec from gyro, since full scale range
-    // (16 bits) is +/- 500 deg/sec, aka 8.73 rad / sec
-    pitch_rad_per_sec_gyro = float(gy_) * 500 / 32767;
+    // Compute anglular rates in deg / sec from gyro, since full scale range
+    // (16 bits = 32767) codes to +/- 500 deg/sec
+    pitch_rad_per_sec_gyro = pitch_rate_filter_(float(gy_) * 500 / 32767);
+    yaw_rad_per_sec_gyro = yaw_rate_filter_(float(gz_) * 500 / 32767);
 
     // Join sensor readings using complementary filter:
-    pitch_rad = alpha_ * (pitch_rad + pitch_rad_per_sec_gyro * dTime) + (1.0 - alpha_) * pitch_rad_acc;
+    pitch_rad = pitch_filter_((IMU_COMP_FILTER_ALPHA * (pitch_rad + pitch_rad_per_sec_gyro * dTime) +
+                               (1.0 - IMU_COMP_FILTER_ALPHA) * pitch_rad_acc));
 
     // Debug (SLOWS DOWN LOOP):
     // Print raw IMU values:

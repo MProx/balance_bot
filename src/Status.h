@@ -4,26 +4,26 @@
 
 typedef struct
 {
-    // horizontal position PID coefficients:
-    float position_kP = 0.0;
-    float position_kI = 0.0;
-    float position_kD = 0.0;
-
     // pitch angle PID coefficients:
-    float pitch_kP = 2400.0;
-    float pitch_kI = 1380.0;
-    float pitch_kD = 135.0;
+    float pitch_kP = 1715.0;
+    float pitch_kI = 3887.0;
+    float pitch_kD = 56.0;
+
+    // horizontal position PID coefficients:
+    float position_kP = 0.0034;
+    float position_kI = 0.0018;
+    float position_kD = 0.0045;
 
     // yaw angle PID coefficients:
-    float yaw_kP = 0.0;
-    float yaw_kI = 0.0;
+    float yaw_kP = 40.0;
+    float yaw_kI = 5.0;
     float yaw_kD = 0.0;
 
     // Control variables:
     float batt_volts;               // Batery voltage
     float pitch_rad_setpoint = 0;   // Pitch angle setpoint
     float position_setpoint = 0;    // Linear position setpoint
-    float yaw_rate_setpoint = 0;    // Yaw rate setpoint
+    float yaw_rate_setpoint = 0;    // Yaw rate setpoint (deg/sec)
     float pitch_rad, pitch_rad_acc; // IMU angle after complementary filter
     float pitch_rate_rad_per_sec;   // IMU anglular rate from gyro alone
     float yaw_rate_rad_per_sec;     // IMU anglular rate from gyro alone

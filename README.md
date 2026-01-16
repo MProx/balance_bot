@@ -13,7 +13,10 @@ This repo contains designs for a self-balancing robot (inverted pendulum). Balan
 * 90 mm wheels and wheel hubs
 * Custom [Roboremo app](https://www.roboremo.app/) on phone for control and PID tuning.
 
-## Software Design
+## Design
+
+![controller design](img/self-balancing-robot.png)
+
 Pitch angle is measured from the IMU using accelerometer and gyroscope values, combined using a complementary filter. An inner PID loop adjusts motor speed to achieve desired angle and keep the robot vertical. 
 
 However, once the robot has achieved this angle it will consider this a job well done even though it might be moving forward/backward at a constant speed. Further, slight imperfections in weight distribution or IMU alignment/calibration might mean that a reading of 0 deg might not result in perfect balance. Thus we need a second PID loop that measures the linear speed (derived from motor speed) and adjusts the desired pitch angle accordingly. Setpoint for speed is hardcoded for now, will be set by bluetooth command in the future once robust balancing is achieved.
