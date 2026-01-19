@@ -2,7 +2,7 @@
 
 This repo contains designs for a self-balancing robot (inverted pendulum). Balance is achieved with multiple PID controllers, the setpoints for which come from a phone app over bluetooth.
 
-`TODO: Add photo`
+<img src="img/balance_bot.gif" width="300">
 
 ## Components
 * 2x DRV8825 stepper drivers set in 1/32 microstepping mode
@@ -29,13 +29,12 @@ Each area of concern is broken out into it's own class: IMU, PID, display, bluet
 The PCB was designed in EasyEDA-Pro and ordered from JLCPCB. All components are either "basic" or "extended promotional" at the time, meaning that they don't incur the component handling/loading fee. Exceptions to this include the on/off switch and through-hole components (headers and screw connector for power wires), which were excluded from the BOM and hand-soldered when the PCB arrived. 
 
 ## Challenges and Considerations
-* Motor vibration. This is the biggest killer. The robot cannot balance if it can't accurately tell which way is down due to sensor noise contamination. To address this, try to mechanically decoouple PCB from motor mounts by mounting the PCB with anti-vibration mounts from drone flight controller. Also, the IMU low-pass filter is enabled (~40 hz cutoff).
+* Motor vibration. This is the biggest killer. The robot cannot balance if it can't accurately tell which way is down due to sensor noise contamination. To address this, try to mechanically decoouple PCB from motor mounts by mounting the PCB with thick foam tape. Also, the IMU low-pass filter is enabled (~40 hz cutoff), and outputs are passed through a 4th order butterworth low-pass filter with 10 Hz cutoff.
 * In the ideal case, the only relevant acceleration is gravity. However accelerations from rapid changes to pitch angle can affect the readings. The PCB with IMU should be mounted close to (but mechanically decoupled from) the motor axis.
 * The PID loop time should be kept quick, but consistent. In this instance, it's 500 Hz (2 milliseconds loop time).
 * Make sure to set motor current limiting correctly.
 
 ## To Do 
-* Experiment with a second low-pass filter on accelerometer readings in code, but beware of latency/responsiveness trade off. IMU readings cannot be stale.
-* Dynamically adjust complementary filter alpha value based on motor speed. Acceletometer readings might be less accurate when moving due to lateral acceleration.
+* Acceletometer readings might be less accurate when moving due to lateral acceleration and motor noise. Experiment with dynamically computed complementary filter alpha value based on motor speed. 
 * Switch over from DRV8825 to TMC2209 (lower noise/vibration), some hardware layout changes required.
 * Instead of controlling speed, try to control position (integral of speed over time).
