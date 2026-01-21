@@ -7,12 +7,12 @@ typedef struct
     // pitch angle PID coefficients:
     float pitch_kP = 1715.0;
     float pitch_kI = 3887.0;
-    float pitch_kD = 56.0;
+    float pitch_kD = 100.0;
 
     // horizontal position PID coefficients:
-    float position_kP = 0.0034;
-    float position_kI = 0.0018;
-    float position_kD = 0.0045;
+    float position_kP = 0.0020;
+    float position_kI = 0.0;
+    float position_kD = 0.0095;
 
     // yaw angle PID coefficients:
     float yaw_kP = 40.0;

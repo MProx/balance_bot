@@ -53,16 +53,16 @@ void IMU::update()
 
     // Compute anglular rates in deg / sec from gyro, since full scale range
     // (16 bits = 32767) codes to +/- 500 deg/sec
-    pitch_rad_per_sec_gyro = pitch_rate_filter_(float(gy_) * 500 / 32767);
-    yaw_rad_per_sec_gyro = yaw_rate_filter_(float(gz_) * 500 / 32767);
+    pitch_rad_per_sec_gyro = float(gy_) * 500 / 32767;
+    yaw_rad_per_sec_gyro = float(gz_) * 500 / 32767;
 
     // Join sensor readings using complementary filter:
-    pitch_rad = pitch_filter_((IMU_COMP_FILTER_ALPHA * (pitch_rad + pitch_rad_per_sec_gyro * dTime) +
-                               (1.0 - IMU_COMP_FILTER_ALPHA) * pitch_rad_acc));
+    pitch_rad = (IMU_COMP_FILTER_ALPHA * (pitch_rad + pitch_rad_per_sec_gyro * dTime) +
+                 (1.0 - IMU_COMP_FILTER_ALPHA) * pitch_rad_acc);
 
     // Debug (SLOWS DOWN LOOP):
     // Print raw IMU values:
-    // Serial.printf("%i\t%i\t%i\t%i\t%i\t%i\n", axs_, ay_, azs_, gx_, gy_, gz_);
+    // Serial.printf("%i\t%i\t%i\t%i\t%i\t%i\n", ax_, ay_, az_, gx_, gy_, gz_);
     // Print comouted angles in degrees:
     // Serial.printf("-90, 90, %0.2f, %0.2f\n", pitch_rad_acc * RAD_TO_DEG, pitch_rad * RAD_TO_DEG);
 }
