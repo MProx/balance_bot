@@ -11,7 +11,7 @@ public:
     IMU() : imu_(MPU6050_I2C_ADDR) {}
     float pitch_rad, pitch_rad_acc, pitch_rad_per_sec_gyro, yaw_rad_per_sec_gyro; // main outputs
     void begin();
-    void update();
+    void update(float alpha);
 
 private:
     MPU6050 imu_;

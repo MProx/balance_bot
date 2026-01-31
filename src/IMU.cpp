@@ -22,7 +22,7 @@ void IMU::begin()
     imu_.setZAccelOffset(1086);
     imu_.setXGyroOffset(21);
     imu_.setYGyroOffset(-1);
-    imu_.setZGyroOffset(28);
+    imu_.setZGyroOffset(15);
 
     // Digital low-pass filrer to remove some noise:
     // imu_.setDLPFMode(4); // Cutoff: ~20 Hz
@@ -30,7 +30,7 @@ void IMU::begin()
     imu_.setIntEnabled(1 << MPU6050_INTERRUPT_DATA_RDY_BIT);
 }
 
-void IMU::update()
+void IMU::update(float alpha)
 {
     uint32_t _now = micros();
 
@@ -57,12 +57,16 @@ void IMU::update()
     yaw_rad_per_sec_gyro = float(gz_) * 500 / 32767;
 
     // Join sensor readings using complementary filter:
-    pitch_rad = (IMU_COMP_FILTER_ALPHA * (pitch_rad + pitch_rad_per_sec_gyro * dTime) +
-                 (1.0 - IMU_COMP_FILTER_ALPHA) * pitch_rad_acc);
+    pitch_rad = (alpha * (pitch_rad + pitch_rad_per_sec_gyro * dTime) +
+                 (1.0 - alpha) * pitch_rad_acc);
 
     // Debug (SLOWS DOWN LOOP):
     // Print raw IMU values:
     // Serial.printf("%i\t%i\t%i\t%i\t%i\t%i\n", ax_, ay_, az_, gx_, gy_, gz_);
-    // Print comouted angles in degrees:
+    // Print computed pitch angles in degrees:
     // Serial.printf("-90, 90, %0.2f, %0.2f\n", pitch_rad_acc * RAD_TO_DEG, pitch_rad * RAD_TO_DEG);
+    // Print computed yaw rates in degrees:
+    // Serial.printf("-90, 90, %0.2f\n", yaw_rad_per_sec_gyro);
+    // Print computed yaw rates in bits:
+    // Serial.println(gz_);
 }

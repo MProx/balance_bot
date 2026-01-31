@@ -27,13 +27,12 @@
 #define POSITION_PID_LOOP_PERIOD 20000 // microseconds for 50hz loop
 
 // IMU filter params:
-#define IMU_COMP_FILTER_ALPHA 0.98
-#define IMU_FILTER_CUTOFF_FREQ 10.0 // Hz
-#define IMU_FILTER_ORDER 4
+#define FILTER_CUTOFF_FREQ 10.0 // Hz
+#define FILTER_ORDER 4
 
 // Power management
 #define BATT_VOLTS_DIV_FACTOR 4.030 // Voltage divider (R1 = 100kohm and R2 = 33 kohm)
 
 // Other config:
-#define PITCH_LIMIT 35.0f    // Limit beyond which the motors are disabled
+#define PITCH_LIMIT 45.0f    // Limit beyond which the motors are disabled
 #define STARTUP_DELAY_US 1e6 // Delay after startup after which movement begins

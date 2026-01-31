@@ -5,18 +5,18 @@
 typedef struct
 {
     // pitch angle PID coefficients:
-    float pitch_kP = 1715.0;
-    float pitch_kI = 3887.0;
-    float pitch_kD = 100.0;
+    float pitch_kP = 1430.0;
+    float pitch_kI = 3700.0;
+    float pitch_kD = 45.0;
 
     // horizontal position PID coefficients:
-    float position_kP = 0.0020;
-    float position_kI = 0.0;
-    float position_kD = 0.0095;
+    float position_kP = 0.012;
+    float position_kI = 0.0008;
+    float position_kD = 0.0130;
 
     // yaw angle PID coefficients:
-    float yaw_kP = 40.0;
-    float yaw_kI = 5.0;
+    float yaw_kP = 25.0;
+    float yaw_kI = 10.0;
     float yaw_kD = 0.0;
 
     // Control variables:
@@ -29,8 +29,8 @@ typedef struct
     float yaw_rate_rad_per_sec;     // IMU anglular rate from gyro alone
     float speed = 0;                // Instantaneous linear speed
     float position = 0;             // Instantaneous linear position
-    float pitch_output;             // Motor pulse rate for pitch control
-    float yaw_offset = 0.35;        // // Differential motor pulse rate for yaw = 20 deg / sec
+    float nominal_pulse_rate;       // Nominal motor pulse rate for pitch control
+    float differential_pulse_rate;  // Differential motor pulse rate for yaw control
     bool imu_data_ready = false;
     bool check_bt = false;
 } status_t;

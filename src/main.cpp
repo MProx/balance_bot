@@ -26,11 +26,15 @@ void core0code(void *parameter);
 float hz_to_speed(int16_t stepper_hz);
 float get_batt_volts();
 
-// buterworth filters:
-const float f_normalized_imu = 2 * IMU_FILTER_CUTOFF_FREQ / (float(1e6) / PITCH_PID_LOOP_PERIOD);
-auto pitch_filter_ = butter<IMU_FILTER_ORDER>(f_normalized_imu);
-auto pitch_rate_filter_ = butter<IMU_FILTER_ORDER>(f_normalized_imu);
-auto yaw_rate_filter_ = butter<IMU_FILTER_ORDER>(f_normalized_imu);
+// butterworth filters:
+const float f_10hz_normalized = 2 * FILTER_CUTOFF_FREQ / (float(1e6) / PITCH_PID_LOOP_PERIOD);
+auto pitch_filter = butter<FILTER_ORDER>(f_10hz_normalized);
+auto pitch_rate_filter = butter<FILTER_ORDER>(f_10hz_normalized);
+auto yaw_rate_filter = butter<FILTER_ORDER>(f_10hz_normalized);
+auto speed_filter = butter<FILTER_ORDER>(f_10hz_normalized);
+
+const float f_30hz_normalized = 2 * 50 / (float(1e6) / PITCH_PID_LOOP_PERIOD);
+auto motor_pulse_rate_filter = butter<FILTER_ORDER>(f_10hz_normalized);
 
 void setup()
 {
@@ -77,10 +81,14 @@ void loop()
     // Retrieve IMU readings:
     if (status.imu_data_ready)
     {
-      imu.update();
-      status.pitch_rad = pitch_filter_(imu.pitch_rad);
-      status.pitch_rate_rad_per_sec = pitch_rate_filter_(imu.pitch_rad_per_sec_gyro);
-      status.yaw_rate_rad_per_sec = yaw_rate_filter_(imu.yaw_rad_per_sec_gyro);
+      // Choose complementary filter alpha based on current speed
+      // if moving slower ==> use more gyro, reduce twitches from accelerometer noise
+      // if moving faster ==> use more accelerometer for faster responsiveness
+      float alpha = abs(status.speed) < 1000 ? 0.999 : 0.98;
+      imu.update(alpha);
+      status.pitch_rad = pitch_filter(imu.pitch_rad);
+      status.pitch_rate_rad_per_sec = pitch_rate_filter(imu.pitch_rad_per_sec_gyro);
+      status.yaw_rate_rad_per_sec = yaw_rate_filter(imu.yaw_rad_per_sec_gyro);
       status.imu_data_ready = false;
     }
 
@@ -98,19 +106,21 @@ void loop()
     {
       // Calculate requried stepper pulse frequency to achieve desired pitch angle
       pitch_pid.set_setpoint(status.pitch_rad_setpoint);
-      float pitch_output_raw = pitch_pid.calculate(status.pitch_rad, status.pitch_rate_rad_per_sec);
-      status.pitch_output = status.pitch_output * 0.95 + pitch_output_raw * 0.05; // Crude low-pass filter
+      float pulse_rate_raw = pitch_pid.calculate(status.pitch_rad, status.pitch_rate_rad_per_sec);
+      status.nominal_pulse_rate = pulse_rate_raw * 0.3 + status.nominal_pulse_rate * 0.7; // Crude low-pass filter
+
+      if (status.yaw_rate_setpoint == 0)
+        status.differential_pulse_rate = 0; // disable
 
       // Run motors at calculated pulse frequency.
       // Note, motors are inverting outout (positive motor speed tends to tip the
-      // robot in the negative direction). So use negative output.
+      // robot in the negative direction). So use negative outputs.
       motors.enable();
-      status.yaw_offset = 0;
-      motors.set_speed(-status.pitch_output, status.yaw_offset);
+      motors.set_speed(-status.nominal_pulse_rate, -status.differential_pulse_rate);
 
       // Update position:
       float dT = float(now - prev_pitch_pid_time) / 1e6;
-      status.speed = hz_to_speed(-status.pitch_output);
+      status.speed = speed_filter(hz_to_speed(-status.nominal_pulse_rate));
       status.position += status.speed * dT;
     }
 
@@ -122,14 +132,13 @@ void loop()
     // Calculate requried pitch angle to achieve desired linear position
     // Note: position setpoint comes from BT commands for remote control
     position_pid.set_setpoint(status.position_setpoint);
-    static float speed_s = 0;
-    speed_s = status.speed * 0.999 + speed_s * 0.001; // crude low-pass filter
-    status.pitch_rad_setpoint = position_pid.calculate(status.position, speed_s);
+    status.pitch_rad_setpoint = position_pid.calculate(status.position, status.speed);
+    status.pitch_rad_setpoint = constrain(status.pitch_rad_setpoint, -15.0, 15.0);
 
     // Calculate required motor differential pulse rate for yaw offset:
     // Note: yaw rate setpoint comes from BT commands for remote control
     yaw_pid.set_setpoint(status.yaw_rate_setpoint);
-    status.yaw_offset = yaw_pid.calculate(status.yaw_rate_rad_per_sec);
+    status.differential_pulse_rate = yaw_pid.calculate(status.yaw_rate_rad_per_sec);
 
     prev_pos_pid_time = now;
   }
@@ -145,7 +154,7 @@ void core0code(void *parameter)
     {
       bluetooth.update(); // Blocks with active BT connection!
       status.check_bt = true;
-      // status.yaw_rate_setpoint = 20;
+      status.yaw_rate_setpoint = 20;
     }
     motors.run();
     delayMicroseconds(0); // feed watchdog
